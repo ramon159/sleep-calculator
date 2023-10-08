@@ -8,91 +8,93 @@ import {
   useToastController,
   XStack,
   YStack,
+  ListItem,
+  YGroup,
+  ToggleGroup,
+  SizeTokens,
+  Label,
+  H2,
+  H3,
 } from '@my/ui'
-import { ChevronDown, ChevronUp } from '@tamagui/lucide-icons'
-import React, { useState } from 'react'
+import { AlarmClock, AlignCenter, AlignLeft, AlignRight } from '@tamagui/lucide-icons'
+import React, { useEffect, useState } from 'react'
 import { useLink } from 'solito/link'
+import { addMinutes, format, getHours, getMinutes, parse, parseISO } from 'date-fns'
 
 export function HomeScreen() {
-  const linkProps = useLink({
-    href: '/user/nate',
-  })
+  const [time, setTime] = useState<Date>(HoraAtual())
+  const [alarmSelected, setAlarmSelected] = useState<string>('')
+  const [alarm, setAlarm] = useState<Date | null>(null)
+  const toast = useToastController()
 
+  useEffect(() => {
+    const interval = setInterval(() => setTime(HoraAtual()), 1000 * 15)
+    return () => clearInterval(interval)
+  }, [time])
+
+  function HandleAlarm() {
+    const dateSelect = new Date(alarmSelected)
+    setAlarm(dateSelect)
+    toast.show(`Alarme configurado ${dateSelect.toLocaleString()}`, { native: true })
+  }
   return (
     <YStack f={1} jc="center" ai="center" p="$4" space>
       <YStack space="$4" maw={600}>
-        <H1 ta="center">Welcome to Tamagui.</H1>
-        <Paragraph ta="center">
-          Here's a basic starter to show navigating from one screen to another. This screen uses the
-          same code on Next.js and React Native.
-        </Paragraph>
-
-        <Separator />
-        <Paragraph ta="center">
-          Made by{' '}
-          <Anchor color="$color12" href="https://twitter.com/natebirdman" target="_blank">
-            @natebirdman
-          </Anchor>
-          ,{' '}
-          <Anchor
-            color="$color12"
-            href="https://github.com/tamagui/tamagui"
-            target="_blank"
-            rel="noreferrer"
-          >
-            give it a ⭐️
-          </Anchor>
-        </Paragraph>
+        <H3 ta="center"> {FormatedHour(time)}</H3>
+      </YStack>
+      <Label paddingRight="$0" justifyContent="center" size="$4">
+        Se você dormir agora, o melhor momento para acordar é:
+      </Label>
+      <YStack>
+        <XStack alignItems="center">
+          <XStack flexDirection="column" alignItems="center" justifyContent="center" space="$4">
+            <ToggleGroup
+              orientation="vertical"
+              type="single"
+              size="$8"
+              disableDeactivation={true}
+              onValueChange={(v) => setAlarmSelected(v)}
+            >
+              {[1, 2, 3, 4, 5, 6].map((e, k) => {
+                const hora = CalculaCiclo(time, e)
+                return <AlarmItem hour={hora} key={k} />
+              })}
+            </ToggleGroup>
+          </XStack>
+        </XStack>
       </YStack>
 
       <XStack>
-        <Button {...linkProps}>Link to user</Button>
+        <Button onPress={() => HandleAlarm()}>Adicionar ao Alarme</Button>
       </XStack>
-
-      <SheetDemo />
     </YStack>
   )
 }
 
-function SheetDemo() {
-  const [open, setOpen] = useState(false)
-  const [position, setPosition] = useState(0)
-  const toast = useToastController()
+function HoraAtual() {
+  const agora = new Date()
+  return agora
+}
+function FormatedHour(hora: Date) {
+  const horaFormatada = format(hora, 'HH:mm')
+  return horaFormatada
+}
 
+function AlarmItem(props: { hour: Date }) {
   return (
     <>
-      <Button
-        size="$6"
-        icon={open ? ChevronDown : ChevronUp}
-        circular
-        onPress={() => setOpen((x) => !x)}
-      />
-      <Sheet
-        modal
-        animation="lazy"
-        open={open}
-        onOpenChange={setOpen}
-        snapPoints={[80]}
-        position={position}
-        onPositionChange={setPosition}
-        dismissOnSnapToBottom
-      >
-        <Sheet.Overlay animation="lazy" enterStyle={{ opacity: 0 }} exitStyle={{ opacity: 0 }} />
-        <Sheet.Frame ai="center" jc="center">
-          <Sheet.Handle />
-          <Button
-            size="$6"
-            circular
-            icon={ChevronDown}
-            onPress={() => {
-              setOpen(false)
-              toast.show('Sheet closed!', {
-                message: 'Just showing how toast works...',
-              })
-            }}
-          />
-        </Sheet.Frame>
-      </Sheet>
+      <ToggleGroup.Item value={props.hour.toJSON()} {...props} aria-label="Left aligned">
+        <XStack space="$2">
+          <AlarmClock />
+          <Paragraph>{FormatedHour(props.hour)}</Paragraph>
+        </XStack>
+      </ToggleGroup.Item>
     </>
   )
+}
+
+function CalculaCiclo(hora: Date, ciclos: number) {
+  const delay = 15
+  const cicloSono = 90
+  return addMinutes(hora, ciclos * cicloSono + delay)
 }
